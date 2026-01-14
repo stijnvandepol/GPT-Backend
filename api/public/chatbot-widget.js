@@ -313,12 +313,8 @@
     }
   };
 
-  header.onclick = (e) => {
-    // Don't toggle if clicking the close button
-    if (e.target === closeBtn || closeBtn.contains(e.target)) {
-      return;
-    }
-
+  // Toggle collapse when clicking anywhere on header
+  header.onclick = () => {
     isCollapsed = !isCollapsed;
     if (isCollapsed) {
       widget.classList.add('collapsed');
@@ -327,15 +323,15 @@
     }
   };
 
+  // Close button also collapses instead of closing
   closeBtn.onclick = (e) => {
-    e.stopPropagation(); // Prevent header click
-    widget.classList.add('minimized');
-    setTimeout(() => {
-      widget.hidden = true;
-      widget.classList.remove('minimized', 'collapsed');
-      isCollapsed = false;
-      fab.style.display = 'flex';
-    }, 300);
+    e.stopPropagation(); // Prevent header click triggering
+    isCollapsed = !isCollapsed;
+    if (isCollapsed) {
+      widget.classList.add('collapsed');
+    } else {
+      widget.classList.remove('collapsed');
+    }
   };
 
   sendBtn.onclick = sendMessage;
