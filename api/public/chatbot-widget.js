@@ -60,33 +60,27 @@
     border: none;
     background: linear-gradient(to bottom right, hsl(45, 100%, 72%), hsl(35, 100%, 68%));
     box-shadow: -4px 8px 24px hsla(0, 0%, 0%, 0.25);
+    position: fixed; /* zekerheid */
   }
 
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header {
-    width: 60px;
-    height: 60px;
-    padding: 0;
-    border-bottom: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    background: transparent;
-    color: hsl(0, 0%, 7%);
-  }
-
-  /* In collapsed state: alleen icoon, rest volledig weg */
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header h3,
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-close,
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-messages,
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-input-container {
-    display: none !important;
-  }
-
-  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header::after {
+  /* Icoon renderen op de WIDGET zelf (meest stabiel) */
+  #portfolio-chatbot-widget.collapsed::after {
     content: '💬';
     font-size: 26px;
     line-height: 1;
+    color: hsl(0, 0%, 7%);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* klik gaat naar widget */
+  }
+
+  /* In collapsed state: alleen klikbaar vlak, rest volledig weg */
+  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header,
+  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-messages,
+  #portfolio-chatbot-widget.collapsed #portfolio-chatbot-input-container {
+    display: none !important;
   }
 
   #portfolio-chatbot-header {
@@ -215,27 +209,9 @@
   document.head.appendChild(styleSheet);
 
   // Widget HTML
-  // Let op: de FAB is nu "alleen bij echt sluiten" (stateFab).
-  // Standaard tonen we de collapsed widget (gele icoon) en verbergen we de FAB.
   const widgetHTML = `
     <button id="portfolio-chatbot-fab" aria-label="Open chat" hidden>💬</button>
-    <div id="portfolio-chatbot-widget" hidden>
-      <div id="portfolio-chatbot-header">
-        <h3>${ASSISTANT_NAME}</h3>
-        <button id="portfolio-chatbot-close" aria-label="Close chat">×</button>
-      </div>
-      <div id="portfolio-chatbot-messages"></div>
-      <div id="portfolio-chatbot-input-container">
-        <input
-          type="text"
-          id="portfolio-chatbot-input"
-          placeholder="Stel een vraag..."
-          maxlength="63"
-          autocomplete="off"
-        />
-        <button id="portfolio-chatbot-send" aria-label="Send message">➤</button>
-      </div>
-    </div>
+    <div id="portfolio-chatbot-widget" hidden></div>
   `;
 
   // Inject widget into page
@@ -243,9 +219,28 @@
   container.innerHTML = widgetHTML;
   document.body.appendChild(container);
 
+  // Build full widget structure once (so we can hide it cleanly in collapsed state)
+  const widget = document.getElementById('portfolio-chatbot-widget');
+  widget.innerHTML = `
+    <div id="portfolio-chatbot-header">
+      <h3>${ASSISTANT_NAME}</h3>
+      <button id="portfolio-chatbot-close" aria-label="Close chat">×</button>
+    </div>
+    <div id="portfolio-chatbot-messages"></div>
+    <div id="portfolio-chatbot-input-container">
+      <input
+        type="text"
+        id="portfolio-chatbot-input"
+        placeholder="Stel een vraag..."
+        maxlength="63"
+        autocomplete="off"
+      />
+      <button id="portfolio-chatbot-send" aria-label="Send message">➤</button>
+    </div>
+  `;
+
   // Elements
   const fab = document.getElementById('portfolio-chatbot-fab');
-  const widget = document.getElementById('portfolio-chatbot-widget');
   const header = document.getElementById('portfolio-chatbot-header');
   const closeBtn = document.getElementById('portfolio-chatbot-close');
   const messages = document.getElementById('portfolio-chatbot-messages');
@@ -337,18 +332,17 @@
   setStateCollapsed();
 
   // Clicks
+  // Let op: collapsed widget heeft geen header zichtbaar; dus we klikken op de widget zelf
+  widget.addEventListener('click', () => {
+    if (widget.classList.contains('collapsed')) setStateOpen();
+  });
+
   // FAB is normaliter verborgen; alleen na "×" (stateFab) komt hij terug.
   fab.onclick = () => setStateOpen();
 
-  // Header click:
-  // - als collapsed: open
-  // - als open: collapse
+  // Header click (alleen in open state zichtbaar): open->collapse
   header.onclick = () => {
-    if (widget.classList.contains('collapsed')) {
-      setStateOpen();
-    } else {
-      setStateCollapsed();
-    }
+    if (!widget.classList.contains('collapsed')) setStateCollapsed();
   };
 
   // Close button: terug naar FAB (helemaal weg)
