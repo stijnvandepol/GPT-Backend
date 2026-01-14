@@ -1,0 +1,27 @@
+# Environment variables
+.env
+
+# Node modules
+node_modules/
+api/node_modules/
+
+# Data directory (stats storage)
+api/data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+tmpclaude-*
+nul
