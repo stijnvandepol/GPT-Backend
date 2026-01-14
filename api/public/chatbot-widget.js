@@ -35,7 +35,6 @@
       bottom: 24px;
       right: 24px;
       width: 380px;
-      height: 550px;
       background: hsl(240, 2%, 12%);
       border: 1px solid hsl(0, 0%, 22%);
       border-radius: 20px;
@@ -44,7 +43,16 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: fadeIn 0.5s ease backwards;
+      max-height: 550px;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+    }
+    #stijn-chatbot-widget.collapsed {
+      max-height: 60px;
+    }
+    #stijn-chatbot-widget.minimized {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
     }
     @keyframes fadeIn {
       0% { opacity: 0; transform: translateY(10px); }
@@ -58,6 +66,11 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid hsl(0, 0%, 22%);
+      cursor: pointer;
+      user-select: none;
+    }
+    #stijn-chatbot-header:hover {
+      background: linear-gradient(to bottom right, hsl(240, 1%, 28%) 3%, hsl(0, 0%, 22%) 97%);
     }
     #stijn-chatbot-header h3 {
       margin: 0;
@@ -240,12 +253,14 @@
   // Get elements
   const fab = document.getElementById('stijn-chatbot-fab');
   const widget = document.getElementById('stijn-chatbot-widget');
+  const header = document.getElementById('stijn-chatbot-header');
   const closeBtn = document.getElementById('stijn-chatbot-close');
   const messages = document.getElementById('stijn-chatbot-messages');
   const input = document.getElementById('stijn-chatbot-input');
   const sendBtn = document.getElementById('stijn-chatbot-send');
 
   let busy = false;
+  let isCollapsed = false;
 
   function addMessage(role, text) {
     const el = document.createElement('div');
@@ -291,15 +306,36 @@
 
   fab.onclick = () => {
     widget.hidden = false;
+    widget.classList.remove('minimized');
     fab.style.display = 'none';
     if (messages.childElementCount === 0) {
       addMessage('bot', "Hoi! Ik ben Stijn's assistent. Hoe kan ik je helpen?");
     }
   };
 
-  closeBtn.onclick = () => {
-    widget.hidden = true;
-    fab.style.display = 'flex';
+  header.onclick = (e) => {
+    // Don't toggle if clicking the close button
+    if (e.target === closeBtn || closeBtn.contains(e.target)) {
+      return;
+    }
+
+    isCollapsed = !isCollapsed;
+    if (isCollapsed) {
+      widget.classList.add('collapsed');
+    } else {
+      widget.classList.remove('collapsed');
+    }
+  };
+
+  closeBtn.onclick = (e) => {
+    e.stopPropagation(); // Prevent header click
+    widget.classList.add('minimized');
+    setTimeout(() => {
+      widget.hidden = true;
+      widget.classList.remove('minimized', 'collapsed');
+      isCollapsed = false;
+      fab.style.display = 'flex';
+    }, 300);
   };
 
   sendBtn.onclick = sendMessage;
