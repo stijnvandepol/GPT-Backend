@@ -257,7 +257,7 @@
           type="text"
           id="portfolio-chatbot-input"
           placeholder="Stel een vraag..."
-          maxlength="60"
+          maxlength="63"
           autocomplete="off"
         />
         <button id="portfolio-chatbot-send" aria-label="Send message">➤</button>
@@ -306,7 +306,14 @@
         body: JSON.stringify({ message: text })
       });
 
-      const data = await res.json();
+      const ct = res.headers.get('content-type') || '';
+      const isJson = ct.includes('application/json');
+      const data = isJson ? await res.json().catch(() => ({})) : {};
+
+      if (!res.ok) {
+        addMessage('bot', data.error || `Serverfout (HTTP ${res.status}).`);
+        return;
+      }
 
       if (data.error) {
         addMessage('bot', data.error);
@@ -324,34 +331,50 @@
     }
   }
 
-  fab.onclick = () => {
+  function openWidget() {
     widget.hidden = false;
     widget.classList.remove('minimized');
+    widget.classList.remove('collapsed');
+    isCollapsed = false;
+
     fab.style.display = 'none';
+
     if (messages.childElementCount === 0) {
       addMessage('bot', GREETING_MESSAGE);
     }
-  };
 
-  // Toggle collapse when clicking anywhere on header
+    setTimeout(() => input.focus(), 0);
+  }
+
+  function closeToFab() {
+    widget.hidden = true;
+    widget.classList.remove('minimized');
+    widget.classList.remove('collapsed');
+    isCollapsed = false;
+
+    // Reset UI state als er net een request liep
+    busy = false;
+    sendBtn.disabled = false;
+
+    fab.style.display = 'flex';
+  }
+
+  fab.onclick = () => openWidget();
+
+  // Header click = collapse/expand
   header.onclick = () => {
     isCollapsed = !isCollapsed;
-    if (isCollapsed) {
-      widget.classList.add('collapsed');
-    } else {
-      widget.classList.remove('collapsed');
+    widget.classList.toggle('collapsed', isCollapsed);
+
+    if (!isCollapsed) {
+      setTimeout(() => input.focus(), 0);
     }
   };
 
-  // Close button also collapses instead of closing
+  // Close button = echt sluiten naar FAB
   closeBtn.onclick = (e) => {
-    e.stopPropagation(); // Prevent header click triggering
-    isCollapsed = !isCollapsed;
-    if (isCollapsed) {
-      widget.classList.add('collapsed');
-    } else {
-      widget.classList.remove('collapsed');
-    }
+    e.stopPropagation();
+    closeToFab();
   };
 
   sendBtn.onclick = sendMessage;
