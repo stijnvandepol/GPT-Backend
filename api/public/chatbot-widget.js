@@ -71,15 +71,16 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    background: transparent; /* widget zelf is al geel */
+    background: transparent;
     color: hsl(0, 0%, 7%);
   }
 
+  /* In collapsed state: alleen icoon, rest volledig weg */
   #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header h3,
   #portfolio-chatbot-widget.collapsed #portfolio-chatbot-close,
   #portfolio-chatbot-widget.collapsed #portfolio-chatbot-messages,
   #portfolio-chatbot-widget.collapsed #portfolio-chatbot-input-container {
-    display: none;
+    display: none !important;
   }
 
   #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header::after {
@@ -214,8 +215,10 @@
   document.head.appendChild(styleSheet);
 
   // Widget HTML
+  // Let op: de FAB is nu "alleen bij echt sluiten" (stateFab).
+  // Standaard tonen we de collapsed widget (gele icoon) en verbergen we de FAB.
   const widgetHTML = `
-    <button id="portfolio-chatbot-fab" aria-label="Open chat">💬</button>
+    <button id="portfolio-chatbot-fab" aria-label="Open chat" hidden>💬</button>
     <div id="portfolio-chatbot-widget" hidden>
       <div id="portfolio-chatbot-header">
         <h3>${ASSISTANT_NAME}</h3>
@@ -259,15 +262,21 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
+  // State: collapsed (gele icoon in widget, FAB weg)
   function setStateCollapsed() {
     widget.hidden = false;
     widget.classList.add('collapsed');
+
+    fab.hidden = true;
     fab.style.display = 'none';
   }
 
+  // State: open (grote chat, geen extra geel icoon zichtbaar)
   function setStateOpen() {
     widget.hidden = false;
     widget.classList.remove('collapsed');
+
+    fab.hidden = true;
     fab.style.display = 'none';
 
     if (messages.childElementCount === 0) {
@@ -277,6 +286,7 @@
     setTimeout(() => input.focus(), 0);
   }
 
+  // State: fab (chat volledig weg, alleen FAB zichtbaar)
   function setStateFab() {
     widget.hidden = true;
     widget.classList.remove('collapsed');
@@ -284,6 +294,7 @@
     busy = false;
     sendBtn.disabled = false;
 
+    fab.hidden = false;
     fab.style.display = 'flex';
   }
 
@@ -322,10 +333,11 @@
     }
   }
 
-  // Start: standaard ingeklapt
+  // Start: standaard volledig ingeklapt (gele icoon), en dus GEEN invoerblok zichtbaar
   setStateCollapsed();
 
   // Clicks
+  // FAB is normaliter verborgen; alleen na "×" (stateFab) komt hij terug.
   fab.onclick = () => setStateOpen();
 
   // Header click:
