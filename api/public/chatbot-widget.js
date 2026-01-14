@@ -308,6 +308,11 @@
   let busy = false;
   let isCollapsed = true;
 
+  widget.hidden = false;
+  widget.classList.add('collapsed');
+  fab.style.display = 'none';
+  isCollapsed = true;
+
   function addMessage(role, text) {
     const el = document.createElement('div');
     el.className = `portfolio-chat-msg ${role}`;
