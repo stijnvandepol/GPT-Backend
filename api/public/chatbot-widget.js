@@ -2,12 +2,15 @@
   'use strict';
 
   // Configuration
-  const API_BASE_URL = window.CHATBOT_CONFIG?.apiUrl || '';
+  const config = window.CHATBOT_CONFIG || {};
+  const API_BASE_URL = config.apiUrl || '';
   const API_URL = API_BASE_URL + '/api/chat';
+  const ASSISTANT_NAME = config.assistantName || 'Stijn\'s Assistent';
+  const GREETING_MESSAGE = config.greetingMessage || `Hoi! Ik ben ${ASSISTANT_NAME}. Hoe kan ik je helpen?`;
 
   // Create styles matching portfolio theme
   const styles = `
-    #stijn-chatbot-fab {
+    #portfolio-chatbot-fab {
       position: fixed;
       bottom: 24px;
       right: 24px;
@@ -26,11 +29,11 @@
       font-size: 28px;
       transition: all 0.25s ease;
     }
-    #stijn-chatbot-fab:hover {
+    #portfolio-chatbot-fab:hover {
       transform: scale(1.05);
       box-shadow: 0 16px 30px hsla(0, 0%, 0%, 0.25);
     }
-    #stijn-chatbot-widget {
+    #portfolio-chatbot-widget {
       position: fixed;
       bottom: 24px;
       right: 24px;
@@ -44,12 +47,29 @@
       flex-direction: column;
       overflow: hidden;
       max-height: 550px;
-      transition: max-height 0.3s ease, opacity 0.3s ease;
+      transition: all 0.3s ease;
     }
-    #stijn-chatbot-widget.collapsed {
+    #portfolio-chatbot-widget.collapsed {
       max-height: 60px;
+      width: 60px;
+      border-radius: 12px;
+      bottom: 24px;
+      right: 24px;
     }
-    #stijn-chatbot-widget.minimized {
+    #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header {
+      padding: 17px;
+      border-bottom: none;
+      justify-content: center;
+    }
+    #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header h3,
+    #portfolio-chatbot-widget.collapsed #portfolio-chatbot-close {
+      display: none;
+    }
+    #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header::after {
+      content: '💬';
+      font-size: 26px;
+    }
+    #portfolio-chatbot-widget.minimized {
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
@@ -58,7 +78,7 @@
       0% { opacity: 0; transform: translateY(10px); }
       100% { opacity: 1; transform: translateY(0); }
     }
-    #stijn-chatbot-header {
+    #portfolio-chatbot-header {
       background: linear-gradient(to bottom right, hsl(240, 1%, 25%) 3%, hsl(0, 0%, 19%) 97%);
       color: hsl(0, 0%, 98%);
       padding: 20px;
@@ -69,16 +89,16 @@
       cursor: pointer;
       user-select: none;
     }
-    #stijn-chatbot-header:hover {
+    #portfolio-chatbot-header:hover {
       background: linear-gradient(to bottom right, hsl(240, 1%, 28%) 3%, hsl(0, 0%, 22%) 97%);
     }
-    #stijn-chatbot-header h3 {
+    #portfolio-chatbot-header h3 {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
       font-family: 'Poppins', sans-serif;
     }
-    #stijn-chatbot-close {
+    #portfolio-chatbot-close {
       background: hsla(240, 1%, 18%, 0.251);
       border: 1px solid hsl(0, 0%, 22%);
       color: hsl(0, 0%, 98%);
@@ -92,11 +112,11 @@
       justify-content: center;
       transition: all 0.25s ease;
     }
-    #stijn-chatbot-close:hover {
+    #portfolio-chatbot-close:hover {
       background: hsl(240, 2%, 20%);
       color: hsl(45, 100%, 72%);
     }
-    #stijn-chatbot-messages {
+    #portfolio-chatbot-messages {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
@@ -105,18 +125,18 @@
       gap: 12px;
       background: hsl(240, 2%, 13%);
     }
-    #stijn-chatbot-messages::-webkit-scrollbar {
+    #portfolio-chatbot-messages::-webkit-scrollbar {
       width: 5px;
     }
-    #stijn-chatbot-messages::-webkit-scrollbar-track {
+    #portfolio-chatbot-messages::-webkit-scrollbar-track {
       background: hsl(240, 1%, 17%);
       border-radius: 5px;
     }
-    #stijn-chatbot-messages::-webkit-scrollbar-thumb {
+    #portfolio-chatbot-messages::-webkit-scrollbar-thumb {
       background: hsl(45, 100%, 72%);
       border-radius: 5px;
     }
-    .stijn-chat-msg {
+    .portfolio-chat-msg {
       padding: 12px 16px;
       border-radius: 14px;
       max-width: 80%;
@@ -136,14 +156,14 @@
         transform: translateY(0);
       }
     }
-    .stijn-chat-msg.user {
+    .portfolio-chat-msg.user {
       background: linear-gradient(to bottom right, hsl(45, 100%, 72%), hsl(35, 100%, 68%));
       color: hsl(0, 0%, 7%);
       align-self: flex-end;
       margin-left: auto;
       box-shadow: 0 4px 12px hsla(45, 100%, 72%, 0.15);
     }
-    .stijn-chat-msg.bot {
+    .portfolio-chat-msg.bot {
       background: linear-gradient(
         to bottom right,
         hsla(240, 1%, 18%, 0.251) 0%,
@@ -154,14 +174,14 @@
       border: 1px solid hsl(0, 0%, 22%);
       box-shadow: -4px 8px 24px hsla(0, 0%, 0%, 0.25);
     }
-    #stijn-chatbot-input-container {
+    #portfolio-chatbot-input-container {
       padding: 16px;
       background: hsl(240, 2%, 12%);
       border-top: 1px solid hsl(0, 0%, 22%);
       display: flex;
       gap: 8px;
     }
-    #stijn-chatbot-input {
+    #portfolio-chatbot-input {
       flex: 1;
       padding: 12px 16px;
       border: 1px solid hsl(0, 0%, 22%);
@@ -173,13 +193,13 @@
       color: hsl(0, 0%, 98%);
       transition: border-color 0.25s ease;
     }
-    #stijn-chatbot-input:focus {
+    #portfolio-chatbot-input:focus {
       border-color: hsl(45, 100%, 72%);
     }
-    #stijn-chatbot-input::placeholder {
+    #portfolio-chatbot-input::placeholder {
       color: hsl(0, 0%, 84%, 0.7);
     }
-    #stijn-chatbot-send {
+    #portfolio-chatbot-send {
       background: linear-gradient(to bottom right, hsl(45, 100%, 72%), hsl(35, 100%, 68%));
       color: hsl(0, 0%, 7%);
       border: none;
@@ -194,24 +214,24 @@
       transition: all 0.25s ease;
       box-shadow: 0 4px 12px hsla(45, 100%, 72%, 0.15);
     }
-    #stijn-chatbot-send:hover {
+    #portfolio-chatbot-send:hover {
       transform: scale(1.05);
       box-shadow: 0 8px 16px hsla(45, 100%, 72%, 0.25);
     }
-    #stijn-chatbot-send:disabled {
+    #portfolio-chatbot-send:disabled {
       opacity: 0.5;
       cursor: not-allowed;
       transform: none;
     }
     @media (max-width: 480px) {
-      #stijn-chatbot-widget {
+      #portfolio-chatbot-widget {
         width: calc(100vw - 32px);
         height: calc(100vh - 100px);
         bottom: 16px;
         right: 16px;
         border-radius: 16px;
       }
-      #stijn-chatbot-fab {
+      #portfolio-chatbot-fab {
         bottom: 16px;
         right: 16px;
       }
@@ -225,22 +245,22 @@
 
   // Create widget HTML
   const widgetHTML = `
-    <button id="stijn-chatbot-fab" aria-label="Open chat">💬</button>
-    <div id="stijn-chatbot-widget" hidden>
-      <div id="stijn-chatbot-header">
-        <h3>Stijn's Assistent</h3>
-        <button id="stijn-chatbot-close" aria-label="Close chat">×</button>
+    <button id="portfolio-chatbot-fab" aria-label="Open chat">💬</button>
+    <div id="portfolio-chatbot-widget" hidden>
+      <div id="portfolio-chatbot-header">
+        <h3>${ASSISTANT_NAME}</h3>
+        <button id="portfolio-chatbot-close" aria-label="Close chat">×</button>
       </div>
-      <div id="stijn-chatbot-messages"></div>
-      <div id="stijn-chatbot-input-container">
+      <div id="portfolio-chatbot-messages"></div>
+      <div id="portfolio-chatbot-input-container">
         <input
           type="text"
-          id="stijn-chatbot-input"
+          id="portfolio-chatbot-input"
           placeholder="Stel een vraag..."
           maxlength="60"
           autocomplete="off"
         />
-        <button id="stijn-chatbot-send" aria-label="Send message">➤</button>
+        <button id="portfolio-chatbot-send" aria-label="Send message">➤</button>
       </div>
     </div>
   `;
@@ -251,20 +271,20 @@
   document.body.appendChild(container);
 
   // Get elements
-  const fab = document.getElementById('stijn-chatbot-fab');
-  const widget = document.getElementById('stijn-chatbot-widget');
-  const header = document.getElementById('stijn-chatbot-header');
-  const closeBtn = document.getElementById('stijn-chatbot-close');
-  const messages = document.getElementById('stijn-chatbot-messages');
-  const input = document.getElementById('stijn-chatbot-input');
-  const sendBtn = document.getElementById('stijn-chatbot-send');
+  const fab = document.getElementById('portfolio-chatbot-fab');
+  const widget = document.getElementById('portfolio-chatbot-widget');
+  const header = document.getElementById('portfolio-chatbot-header');
+  const closeBtn = document.getElementById('portfolio-chatbot-close');
+  const messages = document.getElementById('portfolio-chatbot-messages');
+  const input = document.getElementById('portfolio-chatbot-input');
+  const sendBtn = document.getElementById('portfolio-chatbot-send');
 
   let busy = false;
   let isCollapsed = false;
 
   function addMessage(role, text) {
     const el = document.createElement('div');
-    el.className = `stijn-chat-msg ${role}`;
+    el.className = `portfolio-chat-msg ${role}`;
     el.textContent = text;
     messages.appendChild(el);
     messages.scrollTop = messages.scrollHeight;
@@ -309,7 +329,7 @@
     widget.classList.remove('minimized');
     fab.style.display = 'none';
     if (messages.childElementCount === 0) {
-      addMessage('bot', "Hoi! Ik ben Stijn's assistent. Hoe kan ik je helpen?");
+      addMessage('bot', GREETING_MESSAGE);
     }
   };
 

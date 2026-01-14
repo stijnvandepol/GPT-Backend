@@ -294,3 +294,111 @@ Voor vragen of issues, zie:
 - [EMBED.md](EMBED.md) - Volledige embed instructies
 - [INTEGRATION.html](INTEGRATION.html) - Volledig voorbeeld
 - `http://localhost:3000/embed-example.html` - Test pagina
+
+# Configuratie Opties
+
+## Basis Configuratie
+
+```html
+<script>
+  window.CHATBOT_CONFIG = {
+    apiUrl: 'https://jouw-server.com:3000'
+  };
+</script>
+<script src="https://jouw-server.com:3000/chatbot-widget.js"></script>
+```
+
+## Volledige Configuratie
+
+```html
+<script>
+  window.CHATBOT_CONFIG = {
+    // Vereist: API endpoint URL
+    apiUrl: 'https://jouw-server.com:3000',
+
+    // Optioneel: Naam van de assistent (standaard: "Assistent")
+    assistantName: "Stijn's Assistent",
+
+    // Optioneel: Begroeting bericht (standaard: "Hoi! Ik ben {assistantName}. Hoe kan ik je helpen?")
+    greetingMessage: 'Hoi! Stel gerust je vragen over mijn ervaring en projecten.'
+  };
+</script>
+<script src="https://jouw-server.com:3000/chatbot-widget.js"></script>
+```
+
+## Configuratie Opties
+
+### `apiUrl` (vereist)
+- Type: `string`
+- De base URL van je chatbot API
+- Voorbeelden:
+  - `'https://chatbot.jouwdomein.nl'`
+  - `'https://api.jouwdomein.nl'`
+  - `'http://localhost:3000'` (voor lokaal testen)
+  - `''` (lege string voor zelfde origin)
+
+### `assistantName` (optioneel)
+- Type: `string`
+- Default: `'Assistent'`
+- De naam die wordt getoond in de header van de widget
+- Voorbeelden:
+  - `"Stijn's Assistent"`
+  - `"Portfolio Assistent"`
+  - `"Virtuele Assistent"`
+
+### `greetingMessage` (optioneel)
+- Type: `string`
+- Default: `'Hoi! Ik ben {assistantName}. Hoe kan ik je helpen?'`
+- Het eerste bericht dat de gebruiker ziet wanneer de chat opent
+- Voorbeelden:
+  - `'Hoi! Heb je vragen over mijn ervaring?'`
+  - `'Welkom! Vraag gerust wat je wilt weten.'`
+  - `'Hey! Waar kan ik je mee helpen?'`
+
+## Voorbeelden
+
+### Minimale Setup
+
+```html
+<script>
+  window.CHATBOT_CONFIG = { apiUrl: 'https://api.jouwsite.nl' };
+</script>
+<script src="https://api.jouwsite.nl/chatbot-widget.js"></script>
+```
+
+### Zelfde Origin (geen CORS nodig)
+
+Als je chatbot op hetzelfde domein draait als je website:
+
+```html
+<script>
+  window.CHATBOT_CONFIG = {
+    apiUrl: '',  // Lege string = zelfde origin
+    assistantName: 'Assistent'
+  };
+</script>
+<script src="/chatbot-widget.js"></script>
+```
+
+## Backend Configuratie
+
+De chatbot widget verbindt met deze endpoints:
+
+- **POST** `/api/chat` - Voor het versturen van berichten
+- **GET** `/api/health` - Voor health checks (optioneel)
+
+Zorg dat deze endpoints beschikbaar zijn op de `apiUrl` die je configureert.
+
+## Styling Aanpassen
+
+De widget gebruikt deze CSS ID's en classes (mocht je custom styling willen toevoegen):
+
+- `#portfolio-chatbot-fab` - De floating action button
+- `#portfolio-chatbot-widget` - De hoofd widget container
+- `#portfolio-chatbot-header` - Header met naam en close button
+- `#portfolio-chatbot-messages` - Berichten container
+- `.portfolio-chat-msg` - Individuele berichten
+- `.portfolio-chat-msg.user` - Gebruiker berichten
+- `.portfolio-chat-msg.bot` - Bot berichten
+
+Je kunt deze overriden in je eigen CSS als je de kleuren/styling wilt aanpassen.
