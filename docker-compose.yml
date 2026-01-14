@@ -1,0 +1,12 @@
+services:
+  web:
+    build: ./src
+    ports:
+      - "80:80"
+
+  api:
+    build: ./api
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"

@@ -1,0 +1,32 @@
+<!-- Chatbot widget -->
+<button id="chatFab" class="chat-fab" aria-label="Open chatbot">
+  Chat
+</button>
+
+<section id="chatWidget" class="chat-widget" aria-label="Chatbot" hidden>
+  <header class="chat-header">
+    <div>
+      <div class="chat-title">Stijn’s assistent</div>
+      <div class="chat-subtitle">Vragen over mijn profiel, ervaring en skills.</div>
+    </div>
+    <button id="chatClose" class="chat-close" aria-label="Sluit chatbot">✕</button>
+  </header>
+
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+
+  <div class="chat-compose">
+    <textarea
+      id="chatInput"
+      class="chat-input"
+      rows="1"
+      placeholder="Typ je vraag… (Enter = versturen, Shift+Enter = nieuwe regel)"
+    ></textarea>
+    <button id="chatSend" class="chat-send">Verstuur</button>
+  </div>
+
+  <div class="chat-footer">
+    Beperkingen: max. enkele berichten per minuut. Houd het redelijk.
+  </div>
+</section>
+
+<script src="./chatbot.js"></script>
