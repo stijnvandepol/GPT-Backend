@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 const MAX_MESSAGE_CHARS = 60;
-const CHAT_WINDOW_MS = 10 * 1000;
+const CHAT_WINDOW_MS = 5 * 1000;
 const CHAT_MAX_REQUESTS = 1;
 
 const REPORT_HOUR = 18;
