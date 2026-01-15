@@ -55,11 +55,14 @@
       border-radius: 12px;
       bottom: 24px;
       right: 24px;
+      background: linear-gradient(to bottom right, hsl(45, 100%, 72%), hsl(35, 100%, 68%));
+      border: none;
     }
     #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header {
       padding: 17px;
       border-bottom: none;
       justify-content: center;
+      background: transparent;
     }
     #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header h3,
     #portfolio-chatbot-widget.collapsed #portfolio-chatbot-close {
@@ -68,6 +71,11 @@
     #portfolio-chatbot-widget.collapsed #portfolio-chatbot-header::after {
       content: '💬';
       font-size: 26px;
+      color: hsl(0, 0%, 7%);
+    }
+    #portfolio-chatbot-widget.collapsed:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px hsla(0, 0%, 0%, 0.3);
     }
     #portfolio-chatbot-widget.minimized {
       opacity: 0;
