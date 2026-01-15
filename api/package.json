@@ -1,12 +1,19 @@
 {
-  "name": "portfolio-chat-api",
+  "name": "ai-chatbot-widget",
   "version": "1.0.0",
+  "description": "Customizable AI chatbot widget with OpenAI integration",
   "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs",
+    "dev": "node server.cjs"
+  },
   "dependencies": {
     "express": "^4.19.0",
     "cors": "^2.8.5",
     "openai": "^4.0.0",
-    "express-rate-limit": "^7.0.0",
-    "node-cron": "^3.0.3"
+    "express-rate-limit": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

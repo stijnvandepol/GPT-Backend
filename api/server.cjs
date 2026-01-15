@@ -4,9 +4,6 @@ const rateLimit = require("express-rate-limit");
 const OpenAI = require("openai");
 const fs = require("fs");
 const path = require("path");
-const cron = require("node-cron");
-
-process.env.TZ = "Europe/Amsterdam";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -17,21 +14,15 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 const MAX_MESSAGE_CHARS = 60;
-const CHAT_WINDOW_MS = 5 * 1000;
+const CHAT_WINDOW_MS = 3 * 1000;
 const CHAT_MAX_REQUESTS = 1;
-
-const REPORT_HOUR = 18;
-const DISCORD_WEBHOOK_URL = (process.env.DISCORD_WEBHOOK_URL || "").trim();
-
-const DATA_DIR = path.join(__dirname, "data");
-const STATS_FILE = path.join(DATA_DIR, "stats.json");
 
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 15,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Te veel verzoeken. Probeer het later opnieuw." }
+  message: { error: "Too many requests. Please try again later." }
 });
 app.use("/api/", apiLimiter);
 
@@ -40,7 +31,7 @@ const chatLimiter = rateLimit({
   max: CHAT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Rustig aan. Je mag maximaal 1 bericht per 10 seconden sturen." }
+  message: { error: "Please wait between messages." }
 });
 
 const apiKey = (process.env.OPENAI_API_KEY || "").trim();
@@ -85,157 +76,26 @@ function getPromptCached() {
   return cachedPrompt;
 }
 
-function ensureDataStore() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(STATS_FILE)) {
-    fs.writeFileSync(
-      STATS_FILE,
-      JSON.stringify(
-        {
-          window_start_iso: null,
-          prompts_in_window: 0
-        },
-        null,
-        2
-      ),
-      "utf8"
-    );
-  }
-}
-
-function readStats() {
-  ensureDataStore();
-  try {
-    return JSON.parse(fs.readFileSync(STATS_FILE, "utf8"));
-  } catch {
-    return { window_start_iso: null, prompts_in_window: 0 };
-  }
-}
-
-function writeStats(stats) {
-  ensureDataStore();
-  fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2), "utf8");
-}
-
-function formatIsoLocal(d) {
-  return d.toISOString();
-}
-
-function getCurrentWindowStart(now = new Date()) {
-  const start = new Date(now);
-  start.setHours(REPORT_HOUR, 0, 0, 0);
-
-  if (now < start) {
-    start.setDate(start.getDate() - 1);
-  }
-  return start;
-}
-
-function getNextWindowStart(now = new Date()) {
-  const next = new Date(now);
-  next.setHours(REPORT_HOUR, 0, 0, 0);
-  if (now >= next) next.setDate(next.getDate() + 1);
-  return next;
-}
-
-function getOrInitWindowStats(now = new Date()) {
-  const stats = readStats();
-  const expectedStart = getCurrentWindowStart(now).toISOString();
-
-  if (stats.window_start_iso !== expectedStart) {
-    stats.window_start_iso = expectedStart;
-    stats.prompts_in_window = 0;
-    writeStats(stats);
-  }
-  return stats;
-}
-
-function incrementPromptCount() {
-  const now = new Date();
-  const stats = getOrInitWindowStats(now);
-  stats.prompts_in_window += 1;
-  writeStats(stats);
-  return stats.prompts_in_window;
-}
-
-function windowLabel(now = new Date()) {
-  const start = getCurrentWindowStart(now);
-  const end = getNextWindowStart(now); // volgende 18:00
-  const opts = { year: "numeric", month: "2-digit", day: "2-digit" };
-  const s = start.toLocaleDateString("nl-NL", opts) + " 18:00";
-  const e = end.toLocaleDateString("nl-NL", opts) + " 18:00";
-  return `${s} → ${e}`;
-}
-
-async function sendDiscordMessage(text) {
-  if (!DISCORD_WEBHOOK_URL) return false;
-
-  const res = await fetch(DISCORD_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: text })
-  });
-
-  return res.ok;
-}
-
-cron.schedule(
-  "0 18 * * *",
-  async () => {
-    try {
-      const now = new Date();
-
-      const justBefore = new Date(now.getTime() - 1000);
-      const stats = getOrInitWindowStats(justBefore);
-
-      const count = stats.prompts_in_window || 0;
-      const label = windowLabel(justBefore);
-
-      const msg =
-        `Dagrapport gpt-chatbot\n` +
-        `Venster: ${label}\n` +
-        `Prompts verstuurd: ${count}`;
-
-      const ok = await sendDiscordMessage(msg);
-
-      const newStart = getCurrentWindowStart(now).toISOString();
-      writeStats({ window_start_iso: newStart, prompts_in_window: 0 });
-
-      if (!ok) {
-        console.error("Discord webhook faalde (bericht niet verstuurd). Teller is wel gereset.");
-      }
-    } catch (e) {
-      console.error("Dagrapport cron faalde:", e?.message || e);
-    }
-  },
-  { timezone: "Europe/Amsterdam" }
-);
-
 app.get("/api/health", (req, res) => {
-  const stats = getOrInitWindowStats(new Date());
   console.log("[Health check] OK");
   res.json({
     ok: true,
     max_message_chars: MAX_MESSAGE_CHARS,
-    chat_limit: `${CHAT_MAX_REQUESTS} per ${CHAT_WINDOW_MS / 1000}s`,
-    window_start_iso: stats.window_start_iso,
-    prompts_in_window: stats.prompts_in_window
+    chat_limit: `${CHAT_MAX_REQUESTS} per ${CHAT_WINDOW_MS / 1000}s`
   });
 });
 
 app.post("/api/chat", chatLimiter, async (req, res) => {
   const message = (req.body.message || "").toString().trim();
 
-  if (!message) return res.status(400).json({ error: "Leeg bericht." });
+  if (!message) return res.status(400).json({ error: "Empty message." });
   if (message.length > MAX_MESSAGE_CHARS) {
     return res.status(400).json({
-      error: `Bericht te lang. Maximaal ${MAX_MESSAGE_CHARS} tekens toegestaan.`,
+      error: `Message too long. Maximum ${MAX_MESSAGE_CHARS} characters allowed.`,
       max: MAX_MESSAGE_CHARS,
       received: message.length
     });
   }
-
-  incrementPromptCount();
 
   try {
     const systemPrompt = getPromptCached();
