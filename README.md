@@ -176,16 +176,27 @@ Send a message to the chatbot.
 
 ### GET /api/health
 
-Check server status.
+Check server status and view usage statistics.
 
 **Response:**
 ```json
 {
   "ok": true,
   "max_message_chars": 60,
-  "chat_limit": "1 per 10s"
+  "chat_limit_per_user": "1 per 3s",
+  "chat_limit_global": "50 per minute",
+  "prompts_today": 42,
+  "total_prompts": 1337,
+  "date": "2026-01-15"
 }
 ```
+
+**Fields:**
+- `chat_limit_per_user`: Rate limit per individual user (1 message per 3 seconds)
+- `chat_limit_global`: Global rate limit across all users (50 messages per minute)
+- `prompts_today`: Number of prompts sent today
+- `total_prompts`: Total prompts since first use
+- `date`: Current date (YYYY-MM-DD)
 
 ## 🎨 Customization
 
@@ -222,9 +233,12 @@ Modify click handlers in `api/public/chatbot-widget.js`:
 
 ### Rate Limiting
 
-Two levels of protection:
-1. **API-wide**: 15 requests per 5 minutes
-2. **Chat-specific**: 1 message per 10 seconds per user
+Three levels of protection:
+1. **API-wide**: 100 requests per 5 minutes (all endpoints)
+2. **Per-user**: 1 message per 3 seconds (individual user protection)
+3. **Global**: 50 messages per minute (total across all users)
+
+This prevents both individual spam and server overload from multiple users.
 
 ### Production Checklist
 

@@ -14,8 +14,12 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 const MAX_MESSAGE_CHARS = 60;
-const CHAT_WINDOW_MS = 3 * 1000;
+const CHAT_WINDOW_MS = 3 * 1000; // 3 seconds per user
 const CHAT_MAX_REQUESTS = 1;
+
+// Stats tracking
+const STATS_DIR = path.join(__dirname, "data");
+const STATS_FILE = path.join(STATS_DIR, "stats.json");
 
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -26,12 +30,23 @@ const apiLimiter = rateLimit({
 });
 app.use("/api/", apiLimiter);
 
-const chatLimiter = rateLimit({
+// Per-user rate limiter: 1 message per 3 seconds
+const chatLimiterPerUser = rateLimit({
   windowMs: CHAT_WINDOW_MS,
   max: CHAT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Please wait between messages." }
+  message: { error: "Please wait 3 seconds between messages." }
+});
+
+// Global rate limiter: 50 messages per minute across all users
+const chatLimiterGlobal = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 50,
+  keyGenerator: () => 'global', // Same key for all users
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Server is busy. Please try again in a moment." }
 });
 
 const apiKey = (process.env.OPENAI_API_KEY || "").trim();
@@ -76,16 +91,71 @@ function getPromptCached() {
   return cachedPrompt;
 }
 
+// Stats functions
+function ensureStatsDir() {
+  if (!fs.existsSync(STATS_DIR)) {
+    fs.mkdirSync(STATS_DIR, { recursive: true });
+  }
+}
+
+function getTodayString() {
+  const now = new Date();
+  return now.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function readStats() {
+  ensureStatsDir();
+  if (!fs.existsSync(STATS_FILE)) {
+    const initialStats = {
+      date: getTodayString(),
+      prompts_today: 0,
+      total_prompts: 0
+    };
+    fs.writeFileSync(STATS_FILE, JSON.stringify(initialStats, null, 2));
+    return initialStats;
+  }
+
+  try {
+    const data = fs.readFileSync(STATS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Error reading stats:', err);
+    return { date: getTodayString(), prompts_today: 0, total_prompts: 0 };
+  }
+}
+
+function incrementPromptCount() {
+  const stats = readStats();
+  const today = getTodayString();
+
+  // Reset daily counter if it's a new day
+  if (stats.date !== today) {
+    stats.date = today;
+    stats.prompts_today = 0;
+  }
+
+  stats.prompts_today += 1;
+  stats.total_prompts = (stats.total_prompts || 0) + 1;
+
+  fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2));
+  return stats;
+}
+
 app.get("/api/health", (req, res) => {
+  const stats = readStats();
   console.log("[Health check] OK");
   res.json({
     ok: true,
     max_message_chars: MAX_MESSAGE_CHARS,
-    chat_limit: `${CHAT_MAX_REQUESTS} per ${CHAT_WINDOW_MS / 1000}s`
+    chat_limit_per_user: `${CHAT_MAX_REQUESTS} per ${CHAT_WINDOW_MS / 1000}s`,
+    chat_limit_global: "50 per minute",
+    prompts_today: stats.prompts_today,
+    total_prompts: stats.total_prompts,
+    date: stats.date
   });
 });
 
-app.post("/api/chat", chatLimiter, async (req, res) => {
+app.post("/api/chat", chatLimiterGlobal, chatLimiterPerUser, async (req, res) => {
   const message = (req.body.message || "").toString().trim();
 
   if (!message) return res.status(400).json({ error: "Empty message." });
@@ -117,6 +187,9 @@ app.post("/api/chat", chatLimiter, async (req, res) => {
       console.error("[Chat] Geen reply in completion:", JSON.stringify(completion));
       return res.status(500).json({ error: "Geen antwoord ontvangen van ChatGPT." });
     }
+
+    // Increment prompt counter (only on successful response)
+    incrementPromptCount();
 
     console.log(`[Chat] Antwoord verstuurd (${reply.length} tekens)`);
     res.json({ reply });
