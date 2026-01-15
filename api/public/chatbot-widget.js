@@ -320,6 +320,18 @@
         addMessage('bot', data.error);
       } else if (data.reply) {
         addMessage('bot', data.reply);
+
+        // Show remaining messages if provided
+        if (data.session_messages_remaining !== undefined) {
+          console.log(`Messages remaining in session: ${data.session_messages_remaining}`);
+
+          // Warning when only 2 messages left
+          if (data.session_messages_remaining === 2) {
+            addMessage('bot', '⚠️ You have 2 messages remaining in this session.');
+          } else if (data.session_messages_remaining === 0) {
+            addMessage('bot', '⚠️ Session limit reached. Please refresh the page to continue chatting.');
+          }
+        }
       } else {
         addMessage('bot', 'Geen antwoord ontvangen.');
       }
@@ -331,6 +343,22 @@
       sendBtn.disabled = false;
     }
   }
+
+  // Reset session on page load
+  async function resetSession() {
+    try {
+      await fetch(API_BASE_URL + '/api/reset-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('Session reset successfully');
+    } catch (err) {
+      console.error('Failed to reset session:', err);
+    }
+  }
+
+  // Call reset on page load
+  resetSession();
 
   // Start collapsed (geel icoon zichtbaar)
   widget.hidden = false;

@@ -49,6 +49,31 @@ const chatLimiterGlobal = rateLimit({
   message: { error: "Server is busy. Please try again in a moment." }
 });
 
+// Hourly rate limiter: 100 messages per hour per user
+const chatLimiterHourly = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You have reached the hourly limit. Please try again later." }
+});
+
+// Session-based message counter (in-memory, per IP)
+const sessionMessageCounts = new Map();
+const MAX_MESSAGES_PER_SESSION = 10;
+
+// Clean up old sessions every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  const thirtyMinutes = 30 * 60 * 1000;
+
+  for (const [ip, data] of sessionMessageCounts.entries()) {
+    if (now - data.lastActivity > thirtyMinutes) {
+      sessionMessageCounts.delete(ip);
+    }
+  }
+}, 30 * 60 * 1000);
+
 const apiKey = (process.env.OPENAI_API_KEY || "").trim();
 if (!apiKey) {
   console.error("OPENAI_API_KEY ontbreekt.");
@@ -149,13 +174,30 @@ app.get("/api/health", (req, res) => {
     max_message_chars: MAX_MESSAGE_CHARS,
     chat_limit_per_user: `${CHAT_MAX_REQUESTS} per ${CHAT_WINDOW_MS / 1000}s`,
     chat_limit_global: "50 per minute",
+    chat_limit_hourly: "100 per hour",
+    chat_limit_session: `${MAX_MESSAGES_PER_SESSION} per session`,
     prompts_today: stats.prompts_today,
     total_prompts: stats.total_prompts,
     date: stats.date
   });
 });
 
-app.post("/api/chat", chatLimiterGlobal, chatLimiterPerUser, async (req, res) => {
+// Reset session endpoint (called when user refreshes page)
+app.post("/api/reset-session", (req, res) => {
+  const userIP = req.ip || req.connection.remoteAddress;
+
+  if (sessionMessageCounts.has(userIP)) {
+    sessionMessageCounts.delete(userIP);
+    console.log(`[Session] Reset for IP: ${userIP}`);
+  }
+
+  res.json({
+    ok: true,
+    message: "Session reset successfully"
+  });
+});
+
+app.post("/api/chat", chatLimiterGlobal, chatLimiterHourly, chatLimiterPerUser, async (req, res) => {
   const message = (req.body.message || "").toString().trim();
 
   if (!message) return res.status(400).json({ error: "Empty message." });
@@ -164,6 +206,26 @@ app.post("/api/chat", chatLimiterGlobal, chatLimiterPerUser, async (req, res) =>
       error: `Message too long. Maximum ${MAX_MESSAGE_CHARS} characters allowed.`,
       max: MAX_MESSAGE_CHARS,
       received: message.length
+    });
+  }
+
+  // Session-based limiting (10 messages per session)
+  const userIP = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+
+  if (!sessionMessageCounts.has(userIP)) {
+    sessionMessageCounts.set(userIP, { count: 0, lastActivity: now });
+  }
+
+  const sessionData = sessionMessageCounts.get(userIP);
+  sessionData.lastActivity = now;
+
+  if (sessionData.count >= MAX_MESSAGES_PER_SESSION) {
+    return res.status(429).json({
+      error: "You have reached the limit of 10 messages per session. Please refresh the page to start a new session.",
+      limit_type: "session",
+      messages_sent: sessionData.count,
+      max_messages: MAX_MESSAGES_PER_SESSION
     });
   }
 
@@ -188,11 +250,17 @@ app.post("/api/chat", chatLimiterGlobal, chatLimiterPerUser, async (req, res) =>
       return res.status(500).json({ error: "Geen antwoord ontvangen van ChatGPT." });
     }
 
+    // Increment session counter (only on successful response)
+    sessionData.count += 1;
+
     // Increment prompt counter (only on successful response)
     incrementPromptCount();
 
-    console.log(`[Chat] Antwoord verstuurd (${reply.length} tekens)`);
-    res.json({ reply });
+    console.log(`[Chat] Antwoord verstuurd (${reply.length} tekens) - Session: ${sessionData.count}/${MAX_MESSAGES_PER_SESSION}`);
+    res.json({
+      reply,
+      session_messages_remaining: MAX_MESSAGES_PER_SESSION - sessionData.count
+    });
   } catch (err) {
     console.error("Chat fout:", err?.message || err);
     if (err?.error?.message) {

@@ -185,6 +185,8 @@ Check server status and view usage statistics.
   "max_message_chars": 60,
   "chat_limit_per_user": "1 per 3s",
   "chat_limit_global": "50 per minute",
+  "chat_limit_hourly": "100 per hour",
+  "chat_limit_session": "10 per session",
   "prompts_today": 42,
   "total_prompts": 1337,
   "date": "2026-01-15"
@@ -194,6 +196,8 @@ Check server status and view usage statistics.
 **Fields:**
 - `chat_limit_per_user`: Rate limit per individual user (1 message per 3 seconds)
 - `chat_limit_global`: Global rate limit across all users (50 messages per minute)
+- `chat_limit_hourly`: Hourly limit per user (100 messages per hour)
+- `chat_limit_session`: Session limit per user (10 messages per session, resets on page refresh)
 - `prompts_today`: Number of prompts sent today
 - `total_prompts`: Total prompts since first use
 - `date`: Current date (YYYY-MM-DD)
@@ -233,12 +237,14 @@ Modify click handlers in `api/public/chatbot-widget.js`:
 
 ### Rate Limiting
 
-Three levels of protection:
+Five levels of protection:
 1. **API-wide**: 100 requests per 5 minutes (all endpoints)
-2. **Per-user**: 1 message per 3 seconds (individual user protection)
-3. **Global**: 50 messages per minute (total across all users)
+2. **Per-user (timing)**: 1 message per 3 seconds (prevents rapid-fire spam)
+3. **Per-user (hourly)**: 100 messages per hour (prevents sustained abuse)
+4. **Per-session**: 10 messages per session (prevents excessive usage, resets on page refresh)
+5. **Global**: 50 messages per minute (total across all users, prevents server overload)
 
-This prevents both individual spam and server overload from multiple users.
+This multi-layered approach prevents spam, abuse, and excessive API costs while allowing normal usage.
 
 ### Production Checklist
 
