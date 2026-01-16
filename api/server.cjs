@@ -234,7 +234,7 @@ app.post("/api/chat", chatLimiterGlobal, chatLimiterHourly, chatLimiterPerUser, 
     console.log(`[Chat] Vraag ontvangen: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
